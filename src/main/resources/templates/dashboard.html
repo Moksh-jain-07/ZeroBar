@@ -1,0 +1,1385 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UPI Mesh — Offline Payment Network</title>
+    <meta name="description" content="Live demo of encrypted offline UPI payments routed through a Bluetooth mesh network.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-0: #08090e;
+            --bg-1: #0d0f18;
+            --bg-2: #12141f;
+            --bg-3: #1a1d2e;
+            --bg-4: #21253a;
+            --border: #1e2235;
+            --border-light: #252840;
+            --violet: #7c5cfc;
+            --violet-dim: rgba(124,92,252,0.15);
+            --violet-glow: rgba(124,92,252,0.35);
+            --cyan: #22d3ee;
+            --cyan-dim: rgba(34,211,238,0.12);
+            --emerald: #34d399;
+            --emerald-dim: rgba(52,211,153,0.12);
+            --rose: #fb7185;
+            --rose-dim: rgba(251,113,133,0.12);
+            --amber: #fbbf24;
+            --amber-dim: rgba(251,191,36,0.12);
+            --text-1: #e8eaf6;
+            --text-2: #8b8fa8;
+            --text-3: #4e5272;
+            --sidebar-w: 220px;
+            --topbar-h: 56px;
+            --mono: 'JetBrains Mono', monospace;
+        }
+
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        html, body { height: 100%; overflow: hidden; }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg-0);
+            color: var(--text-1);
+            display: flex;
+            font-size: 13px;
+        }
+
+        /* ══════════════════════════════════════════
+           SIDEBAR
+        ══════════════════════════════════════════ */
+        .sidebar {
+            width: var(--sidebar-w);
+            min-width: var(--sidebar-w);
+            height: 100vh;
+            background: var(--bg-1);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .sidebar-brand {
+            height: var(--topbar-h);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 0 16px;
+            border-bottom: 1px solid var(--border);
+            flex-shrink: 0;
+        }
+
+        .brand-icon {
+            width: 30px; height: 30px;
+            background: linear-gradient(135deg, var(--violet), #a78bfa);
+            border-radius: 8px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 14px;
+            box-shadow: 0 0 16px var(--violet-glow);
+        }
+
+        .brand-name {
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--text-1);
+            letter-spacing: -0.3px;
+        }
+        .brand-sub {
+            font-size: 9px;
+            font-weight: 500;
+            color: var(--text-3);
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+        }
+
+        .sidebar-nav {
+            flex: 1;
+            overflow-y: auto;
+            padding: 12px 8px;
+        }
+        .sidebar-nav::-webkit-scrollbar { width: 3px; }
+        .sidebar-nav::-webkit-scrollbar-thumb { background: var(--border-light); border-radius: 2px; }
+
+        .nav-section {
+            font-size: 9px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--text-3);
+            padding: 16px 8px 6px;
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 9px;
+            padding: 8px 10px;
+            border-radius: 8px;
+            cursor: pointer;
+            color: var(--text-2);
+            font-weight: 500;
+            font-size: 13px;
+            transition: background 0.15s, color 0.15s;
+            margin-bottom: 1px;
+        }
+        .nav-item:hover { background: var(--bg-3); color: var(--text-1); }
+        .nav-item.active { background: var(--violet-dim); color: var(--violet); }
+        .nav-item.active .nav-icon { color: var(--violet); }
+
+        .nav-icon {
+            width: 16px;
+            text-align: center;
+            font-size: 14px;
+            flex-shrink: 0;
+        }
+
+        .nav-badge {
+            margin-left: auto;
+            background: var(--violet);
+            color: white;
+            font-size: 9px;
+            font-weight: 700;
+            padding: 1px 6px;
+            border-radius: 10px;
+        }
+
+        /* Active packets sub-list */
+        .packet-sublist { padding: 4px 8px 8px; }
+
+        .packet-sub-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 7px 8px;
+            border-radius: 7px;
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+        .packet-sub-item:hover { background: var(--bg-3); }
+
+        .packet-sub-dot {
+            width: 22px; height: 22px;
+            border-radius: 6px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 10px;
+            flex-shrink: 0;
+        }
+
+        .packet-sub-info { flex: 1; min-width: 0; }
+        .packet-sub-name { font-size: 12px; font-weight: 600; color: var(--text-1); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .packet-sub-val  { font-size: 11px; color: var(--text-2); font-family: var(--mono); }
+
+        /* Sidebar CTA */
+        .sidebar-cta {
+            margin: 12px 10px;
+            padding: 12px;
+            border-radius: 10px;
+            background: linear-gradient(135deg, rgba(124,92,252,0.2), rgba(124,92,252,0.05));
+            border: 1px solid rgba(124,92,252,0.25);
+            flex-shrink: 0;
+        }
+        .sidebar-cta-icon { font-size: 18px; margin-bottom: 4px; }
+        .sidebar-cta-title { font-size: 12px; font-weight: 700; color: var(--text-1); }
+        .sidebar-cta-desc  { font-size: 11px; color: var(--text-2); margin-top: 3px; line-height: 1.4; }
+
+        /* ══════════════════════════════════════════
+           MAIN AREA
+        ══════════════════════════════════════════ */
+        .main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            min-width: 0;
+        }
+
+        /* TOP BAR */
+        .topbar {
+            height: var(--topbar-h);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 0 20px;
+            flex-shrink: 0;
+            background: var(--bg-1);
+        }
+
+        .topbar-tabs {
+            display: flex;
+            gap: 2px;
+            background: var(--bg-2);
+            border: 1px solid var(--border);
+            border-radius: 9px;
+            padding: 3px;
+        }
+        .topbar-tab {
+            padding: 5px 14px;
+            border-radius: 7px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            color: var(--text-2);
+            transition: background 0.15s, color 0.15s;
+        }
+        .topbar-tab.active { background: var(--violet); color: white; }
+
+        .topbar-spacer { flex: 1; }
+
+        .topbar-time {
+            font-size: 11px;
+            color: var(--text-3);
+            font-family: var(--mono);
+        }
+
+        .btn-topbar {
+            display: inline-flex; align-items: center; gap: 6px;
+            padding: 7px 14px;
+            border-radius: 8px;
+            border: none;
+            font-family: 'Inter', sans-serif;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: opacity 0.15s, transform 0.15s;
+        }
+        .btn-topbar:hover { opacity: 0.85; transform: translateY(-1px); }
+
+        .btn-inject {
+            background: linear-gradient(135deg, var(--violet), #a78bfa);
+            color: white;
+            box-shadow: 0 4px 14px var(--violet-glow);
+        }
+        .btn-ghost {
+            background: var(--bg-3);
+            color: var(--text-2);
+            border: 1px solid var(--border-light);
+        }
+
+        .topbar-icon-btn {
+            width: 34px; height: 34px;
+            background: var(--bg-2);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer;
+            font-size: 14px;
+            color: var(--text-2);
+            transition: background 0.15s, color 0.15s;
+        }
+        .topbar-icon-btn:hover { background: var(--bg-3); color: var(--text-1); }
+
+        /* CONTENT SCROLL */
+        .content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+        .content::-webkit-scrollbar { width: 4px; }
+        .content::-webkit-scrollbar-thumb { background: var(--border-light); border-radius: 2px; }
+
+        /* Section header */
+        .section-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 2px;
+        }
+        .section-meta {
+            font-size: 11px;
+            color: var(--text-3);
+        }
+        .section-title {
+            font-size: 22px;
+            font-weight: 800;
+            color: var(--text-1);
+            letter-spacing: -0.5px;
+        }
+
+        .filter-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .filter-btn {
+            display: flex; align-items: center; gap: 5px;
+            padding: 5px 10px;
+            border-radius: 7px;
+            border: 1px solid var(--border-light);
+            background: var(--bg-2);
+            color: var(--text-2);
+            font-size: 11px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.15s, color 0.15s;
+        }
+        .filter-btn:hover { background: var(--bg-3); color: var(--text-1); }
+
+        /* ── Device Cards row ── */
+        .device-cards-row {
+            display: flex;
+            gap: 12px;
+            align-items: stretch;
+        }
+
+        .device-card {
+            flex: 1;
+            background: var(--bg-2);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            transition: border-color 0.25s, background 0.25s;
+            position: relative;
+            overflow: hidden;
+            min-width: 0;
+        }
+        .device-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, var(--violet), transparent);
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        .device-card:hover { border-color: var(--border-light); background: var(--bg-3); }
+        .device-card:hover::before { opacity: 1; }
+        .device-card.bridge-card { border-color: rgba(52,211,153,0.2); }
+        .device-card.bridge-card:hover { border-color: rgba(52,211,153,0.4); }
+        .device-card.bridge-card::before { background: linear-gradient(90deg, transparent, var(--emerald), transparent); }
+        .device-card.bridge-card:hover::before { opacity: 1; }
+
+        .dc-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .dc-icon {
+            width: 28px; height: 28px;
+            border-radius: 8px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 13px;
+            flex-shrink: 0;
+        }
+
+        .dc-type {
+            font-size: 9px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--text-3);
+        }
+        .dc-name {
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--text-1);
+        }
+
+        .dc-ext-link {
+            margin-left: auto;
+            color: var(--text-3);
+            font-size: 12px;
+            cursor: pointer;
+        }
+
+        .dc-metric-label {
+            font-size: 10px;
+            font-weight: 600;
+            color: var(--text-3);
+            text-transform: uppercase;
+            letter-spacing: 0.07em;
+        }
+        .dc-metric-value {
+            font-size: 26px;
+            font-weight: 800;
+            color: var(--text-1);
+            font-family: var(--mono);
+            letter-spacing: -1px;
+            line-height: 1;
+        }
+
+        .dc-delta {
+            display: inline-flex;
+            align-items: center;
+            gap: 3px;
+            font-size: 11px;
+            font-weight: 600;
+            padding: 2px 7px;
+            border-radius: 5px;
+        }
+        .dc-delta.up   { color: var(--emerald); background: var(--emerald-dim); }
+        .dc-delta.down { color: var(--rose);    background: var(--rose-dim); }
+        .dc-delta.neu  { color: var(--text-2);  background: var(--bg-4); }
+
+        /* Mini sparkline canvas */
+        .sparkline {
+            width: 100%;
+            height: 52px;
+        }
+
+        /* Right promo card */
+        .promo-card {
+            width: 240px;
+            min-width: 240px;
+            background: linear-gradient(160deg, #1a1040 0%, #0d0f18 60%, #0d1a20 100%);
+            border: 1px solid rgba(124,92,252,0.25);
+            border-radius: 14px;
+            padding: 18px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            position: relative;
+            overflow: hidden;
+        }
+        .promo-card::after {
+            content: '';
+            position: absolute;
+            bottom: -40px; right: -40px;
+            width: 140px; height: 140px;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(124,92,252,0.18) 0%, transparent 70%);
+        }
+
+        .promo-logo {
+            display: flex; align-items: center; gap: 8px;
+            font-size: 13px; font-weight: 700;
+        }
+        .promo-new {
+            margin-left: auto;
+            background: var(--violet);
+            color: white;
+            font-size: 9px;
+            font-weight: 700;
+            padding: 2px 7px;
+            border-radius: 5px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        .promo-title {
+            font-size: 18px;
+            font-weight: 800;
+            color: var(--text-1);
+            line-height: 1.2;
+            letter-spacing: -0.4px;
+        }
+        .promo-desc {
+            font-size: 12px;
+            color: var(--text-2);
+            line-height: 1.5;
+        }
+        .promo-btn {
+            display: block;
+            text-align: center;
+            padding: 9px;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 700;
+            cursor: pointer;
+            border: none;
+            font-family: 'Inter', sans-serif;
+            transition: opacity 0.15s;
+            z-index: 1;
+        }
+        .promo-btn:hover { opacity: 0.85; }
+        .promo-btn-primary { background: var(--violet); color: white; }
+        .promo-btn-ghost   { background: rgba(255,255,255,0.06); color: var(--text-1); border: 1px solid var(--border-light); }
+
+        /* ── Bottom split: active detail + period chart ── */
+        .bottom-split {
+            display: grid;
+            grid-template-columns: 1fr 320px;
+            gap: 16px;
+        }
+
+        .detail-card {
+            background: var(--bg-2);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            overflow: hidden;
+        }
+
+        .detail-topbar {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 14px 16px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .detail-topbar-label {
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--text-3);
+        }
+
+        .detail-inner { padding: 16px; }
+
+        .active-tx-header {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            margin-bottom: 14px;
+        }
+
+        .active-icon {
+            width: 36px; height: 36px;
+            border-radius: 10px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 18px;
+            flex-shrink: 0;
+        }
+
+        .active-title { font-size: 20px; font-weight: 800; letter-spacing: -0.5px; }
+        .active-sub   { font-size: 11px; color: var(--text-2); margin-top: 2px; }
+
+        .active-action-row {
+            display: flex; align-items: center; gap: 8px;
+            margin-top: 8px;
+        }
+
+        .big-number {
+            font-size: 38px;
+            font-weight: 800;
+            letter-spacing: -2px;
+            font-family: var(--mono);
+            color: var(--text-1);
+        }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr 1fr;
+            gap: 1px;
+            background: var(--border);
+            border-top: 1px solid var(--border);
+            margin-top: 14px;
+        }
+        .metric-cell {
+            background: var(--bg-2);
+            padding: 12px 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .metric-cell-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-3); }
+        .metric-cell-sub   { font-size: 10px; color: var(--text-3); margin-top: 1px; }
+        .metric-cell-val   { font-size: 16px; font-weight: 800; font-family: var(--mono); }
+        .metric-cell-chevron { margin-left: auto; color: var(--text-3); font-size: 14px; cursor: pointer; }
+
+        /* Mini charts row at bottom */
+        .minichart-row {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1px;
+            background: var(--border);
+            border-top: 1px solid var(--border);
+        }
+        .minichart-cell {
+            background: var(--bg-2);
+            padding: 12px 14px;
+        }
+        .mc-label { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-3); margin-bottom: 4px; display: flex; align-items: center; gap: 6px; }
+        .mc-badge { background: var(--bg-3); color: var(--text-2); border-radius: 5px; padding: 1px 6px; font-size: 9px; }
+        .mc-value { font-size: 18px; font-weight: 800; font-family: var(--mono); }
+        .mc-delta { font-size: 10px; margin-top: 3px; font-weight: 600; }
+
+        /* Right chart card */
+        .period-card {
+            background: var(--bg-2);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            overflow: hidden;
+        }
+        .period-topbar {
+            display: flex;
+            align-items: center;
+            padding: 14px 16px;
+            border-bottom: 1px solid var(--border);
+        }
+        .period-title { font-size: 14px; font-weight: 700; flex: 1; }
+        .period-sub   { font-size: 10px; color: var(--text-3); }
+        .period-tabs  { display: flex; gap: 4px; }
+        .period-tab {
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 600;
+            cursor: pointer;
+            background: transparent;
+            color: var(--text-2);
+            border: 1px solid transparent;
+            transition: all 0.15s;
+        }
+        .period-tab.active { background: var(--violet-dim); color: var(--violet); border-color: rgba(124,92,252,0.3); }
+
+        .period-inner { padding: 16px; }
+        #period-canvas { width: 100%; height: 140px; }
+
+        .tx-mini-list { padding: 0 16px 16px; display: flex; flex-direction: column; gap: 6px; }
+        .tx-mini-item {
+            display: flex; align-items: center; gap: 10px;
+            padding: 8px 10px;
+            border-radius: 8px;
+            background: var(--bg-1);
+            border: 1px solid var(--border);
+        }
+        .tx-mini-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+        .tx-mini-label { flex: 1; font-size: 11px; font-weight: 600; color: var(--text-1); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .tx-mini-amt { font-family: var(--mono); font-size: 11px; font-weight: 700; }
+        .tx-mini-status {
+            font-size: 9px; font-weight: 700; padding: 2px 7px; border-radius: 5px;
+            text-transform: uppercase; letter-spacing: 0.05em;
+        }
+        .ts-SETTLED  { color: var(--emerald); background: var(--emerald-dim); }
+        .ts-REJECTED { color: var(--rose);    background: var(--rose-dim); }
+        .ts-DUPLICATE_DROPPED { color: var(--amber);   background: var(--amber-dim); }
+        .ts-INVALID  { color: var(--rose);    background: var(--rose-dim); }
+
+        /* ── Payment Modal ── */
+        .modal-overlay {
+            position: fixed; inset: 0;
+            background: rgba(0,0,0,0.7);
+            backdrop-filter: blur(6px);
+            display: none; align-items: center; justify-content: center;
+            z-index: 1000;
+        }
+        .modal-overlay.open { display: flex; }
+        .modal {
+            background: var(--bg-2);
+            border: 1px solid var(--border-light);
+            border-radius: 16px;
+            padding: 24px;
+            width: 400px;
+            box-shadow: 0 24px 80px rgba(0,0,0,0.6);
+            animation: modal-in 0.2s ease;
+        }
+        @keyframes modal-in {
+            from { opacity:0; transform: translateY(-16px) scale(0.97); }
+            to   { opacity:1; transform: translateY(0) scale(1); }
+        }
+        .modal-title {
+            font-size: 17px; font-weight: 800;
+            margin-bottom: 20px;
+            display: flex; align-items: center; gap: 10px;
+        }
+        .modal-close {
+            margin-left: auto;
+            cursor: pointer;
+            color: var(--text-3);
+            font-size: 18px;
+        }
+        .modal-field { margin-bottom: 14px; }
+        .modal-label { font-size: 11px; font-weight: 600; color: var(--text-2); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.07em; }
+        .modal-input, .modal-select {
+            width: 100%;
+            background: var(--bg-1);
+            border: 1px solid var(--border-light);
+            color: var(--text-1);
+            border-radius: 8px;
+            padding: 9px 12px;
+            font-family: 'Inter', sans-serif;
+            font-size: 13px;
+            outline: none;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        .modal-input:focus, .modal-select:focus {
+            border-color: var(--violet);
+            box-shadow: 0 0 0 2px rgba(124,92,252,0.2);
+        }
+        .modal-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        .modal-actions { display: flex; gap: 10px; margin-top: 20px; }
+        .btn-modal-cancel { flex: 1; padding: 10px; border-radius: 8px; background: var(--bg-3); border: 1px solid var(--border-light); color: var(--text-2); font-family: 'Inter', sans-serif; font-size: 13px; font-weight: 600; cursor: pointer; }
+        .btn-modal-submit { flex: 2; padding: 10px; border-radius: 8px; background: linear-gradient(135deg, var(--violet), #a78bfa); color: white; border: none; font-family: 'Inter', sans-serif; font-size: 13px; font-weight: 700; cursor: pointer; box-shadow: 0 4px 14px var(--violet-glow); transition: opacity 0.15s; }
+        .btn-modal-submit:hover { opacity: 0.85; }
+
+        /* Gossip / Flush action buttons as icon-text */
+        .action-bar {
+            display: flex; gap: 8px; align-items: center;
+        }
+        .btn-action {
+            display: inline-flex; align-items: center; gap: 6px;
+            padding: 7px 13px;
+            border-radius: 8px;
+            font-family: 'Inter', sans-serif;
+            font-size: 12px; font-weight: 600;
+            cursor: pointer;
+            border: none;
+            transition: opacity 0.15s, transform 0.12s;
+        }
+        .btn-action:hover { opacity: 0.85; transform: translateY(-1px); }
+        .btn-action:disabled { opacity: 0.4; cursor: default; transform: none; }
+        .btn-a-purple { background: var(--violet-dim); color: #c4b5fd; border: 1px solid rgba(124,92,252,0.3); }
+        .btn-a-green  { background: var(--emerald-dim); color: #6ee7b7; border: 1px solid rgba(52,211,153,0.3); }
+        .btn-a-red    { background: var(--rose-dim); color: #fda4af; border: 1px solid rgba(251,113,133,0.3); }
+
+        /* Toasts */
+        #toast-container {
+            position: fixed; top: 68px; right: 16px;
+            z-index: 9999; display: flex; flex-direction: column; gap: 8px; pointer-events: none;
+        }
+        .toast {
+            display: flex; align-items: flex-start; gap: 10px;
+            padding: 11px 14px; border-radius: 10px;
+            backdrop-filter: blur(20px);
+            font-size: 12px; font-weight: 500;
+            max-width: 300px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+            animation: toast-in 0.25s ease, toast-out 0.25s ease 3.8s forwards;
+            pointer-events: auto; cursor: default;
+        }
+        @keyframes toast-in  { from { opacity:0; transform:translateX(16px); } to { opacity:1; transform:none; } }
+        @keyframes toast-out { from { opacity:1; } to { opacity:0; transform:translateX(16px); } }
+        .t-settled  { background:rgba(52,211,153,0.12);  border:1px solid rgba(52,211,153,0.3);  color:var(--text-1); }
+        .t-dupe     { background:rgba(251,191,36,0.12);  border:1px solid rgba(251,191,36,0.3);  color:var(--text-1); }
+        .t-invalid  { background:rgba(251,113,133,0.12); border:1px solid rgba(251,113,133,0.3); color:var(--text-1); }
+        .t-info     { background:rgba(124,92,252,0.12);  border:1px solid rgba(124,92,252,0.3);  color:var(--text-1); }
+        .t-icon { font-size: 16px; flex-shrink: 0; }
+        .t-title { font-weight: 700; margin-bottom: 1px; }
+        .t-msg { color: var(--text-2); font-size: 11px; }
+
+        /* Live indicator */
+        .live-dot {
+            width: 7px; height: 7px; border-radius: 50%;
+            background: var(--emerald);
+            box-shadow: 0 0 6px var(--emerald);
+            animation: blink 2s infinite;
+        }
+        @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+        .cache-pill {
+            display: flex; align-items: center; gap: 6px;
+            background: var(--bg-3); border: 1px solid var(--border-light);
+            border-radius: 20px; padding: 3px 10px;
+            font-size: 11px; color: var(--text-2);
+            font-family: var(--mono);
+        }
+    </style>
+</head>
+<body>
+<div id="toast-container"></div>
+
+<!-- Payment Modal -->
+<div class="modal-overlay" id="modal-overlay">
+    <div class="modal">
+        <div class="modal-title">
+            <span>📤</span> Inject Payment into Mesh
+            <span class="modal-close" onclick="closeModal()">✕</span>
+        </div>
+        <div class="modal-row">
+            <div class="modal-field">
+                <div class="modal-label">From (Sender)</div>
+                <select class="modal-select" id="senderVpa">
+                    <option>alice@demo</option>
+                    <option>bob@demo</option>
+                    <option>carol@demo</option>
+                    <option>dave@demo</option>
+                </select>
+            </div>
+            <div class="modal-field">
+                <div class="modal-label">To (Receiver)</div>
+                <select class="modal-select" id="receiverVpa">
+                    <option>bob@demo</option>
+                    <option>carol@demo</option>
+                    <option>alice@demo</option>
+                    <option>dave@demo</option>
+                </select>
+            </div>
+        </div>
+        <div class="modal-row">
+            <div class="modal-field">
+                <div class="modal-label">Amount (₹)</div>
+                <input class="modal-input" type="number" id="amount" value="500" min="1">
+            </div>
+            <div class="modal-field">
+                <div class="modal-label">PIN</div>
+                <input class="modal-input" type="text" id="pin" value="1234" maxlength="4">
+            </div>
+        </div>
+        <div class="modal-actions">
+            <button class="btn-modal-cancel" onclick="closeModal()">Cancel</button>
+            <button class="btn-modal-submit" id="btn-submit-send" onclick="sendPacket()">📤 Inject into Mesh</button>
+        </div>
+    </div>
+</div>
+
+<!-- ════════════════════════════════ SIDEBAR ════════════════════════════════ -->
+<aside class="sidebar">
+    <div class="sidebar-brand">
+        <div class="brand-icon">📡</div>
+        <div>
+            <div class="brand-name">UPI Mesh</div>
+            <div class="brand-sub">Offline Network</div>
+        </div>
+    </div>
+
+    <div class="sidebar-nav">
+        <div class="nav-section">Main</div>
+        <div class="nav-item active" id="nav-dashboard">
+            <span class="nav-icon">▤</span> Dashboard
+        </div>
+        <div class="nav-item">
+            <span class="nav-icon">📱</span> Mesh Devices
+        </div>
+        <div class="nav-item">
+            <span class="nav-icon">📊</span> Transactions
+        </div>
+        <div class="nav-item">
+            <span class="nav-icon">🔐</span> Crypto Layer
+        </div>
+        <div class="nav-item">
+            <span class="nav-icon">⚡</span> API Reference <span style="margin-left:auto;font-size:9px;color:var(--text-3)">↗</span>
+        </div>
+
+        <div class="nav-section">Network</div>
+        <div class="nav-item">
+            <span class="nav-icon">📡</span> Bridge Nodes
+        </div>
+        <div class="nav-item">
+            <span class="nav-icon">🔄</span> Gossip Rounds
+        </div>
+        <div class="nav-item" id="nav-active-packets">
+            <span class="nav-icon">📦</span> Active Packets
+            <span class="nav-badge" id="sb-packet-count">0</span>
+        </div>
+
+        <!-- Active packets sub-list -->
+        <div class="packet-sublist" id="sb-packet-list"></div>
+    </div>
+
+    <div class="sidebar-cta">
+        <div class="sidebar-cta-icon">🔒</div>
+        <div class="sidebar-cta-title">RSA-2048 + AES-GCM</div>
+        <div class="sidebar-cta-desc">End-to-end encrypted. Intermediaries see only opaque ciphertext.</div>
+    </div>
+</aside>
+
+<!-- ════════════════════════════════ MAIN ════════════════════════════════ -->
+<div class="main">
+    <!-- Top Bar -->
+    <div class="topbar">
+        <div class="topbar-tabs">
+            <div class="topbar-tab active">Live Mesh</div>
+            <div class="topbar-tab">Settled</div>
+        </div>
+        <div class="topbar-spacer"></div>
+        <div class="live-dot"></div>
+        <span class="topbar-time" id="topbar-clock">--:--:--</span>
+        <div class="cache-pill">
+            <span>Cache</span>
+            <strong id="tb-cache">0</strong>
+        </div>
+        <button class="btn-topbar btn-ghost btn-action" id="btn-gossip" onclick="gossip()">🔄 Gossip Round</button>
+        <button class="btn-topbar btn-ghost btn-action" id="btn-flush" onclick="flushBridges()">📡 Flush Bridges</button>
+        <button class="btn-topbar btn-ghost btn-action btn-a-red" id="btn-reset" onclick="resetMesh()">🗑 Reset</button>
+        <button class="btn-topbar btn-inject" onclick="openModal()">📤 Inject Payment 🔒</button>
+    </div>
+
+    <!-- Scrollable content -->
+    <div class="content">
+
+        <!-- Section header -->
+        <div style="display:flex;align-items:flex-end;justify-content:space-between">
+            <div>
+                <div class="section-meta">Recommended devices for settlement · <span id="active-device-count">5</span> Nodes</div>
+                <div class="section-title">Mesh Network Overview</div>
+            </div>
+            <div class="filter-row">
+                <div class="filter-btn">▼ Live</div>
+                <div class="filter-btn">▼ Proof of Encryption</div>
+                <div class="filter-btn">▼ By Packets</div>
+            </div>
+        </div>
+
+        <!-- Device cards + promo card -->
+        <div class="device-cards-row" id="device-cards-row">
+            <!-- populated by JS -->
+            <div class="promo-card" id="promo-card">
+                <div class="promo-logo">
+                    <div class="brand-icon" style="width:22px;height:22px;font-size:11px">📡</div>
+                    <span style="font-size:12px;font-weight:700">UPI Mesh</span>
+                    <span class="promo-new">New</span>
+                </div>
+                <div class="promo-title">Mesh-Routed<br>Deferred Settlement</div>
+                <div class="promo-desc">Payments encrypted offline, relayed by strangers' phones, settled when internet is found.</div>
+                <button class="promo-btn promo-btn-primary" onclick="openModal()">Inject a Payment 📤</button>
+                <button class="promo-btn promo-btn-ghost" style="margin-top:6px" onclick="gossip()">Run Gossip Round 🔄</button>
+            </div>
+        </div>
+
+        <!-- Bottom split: active transaction detail + period chart -->
+        <div class="bottom-split">
+
+            <!-- Detail card -->
+            <div class="detail-card">
+                <div class="detail-topbar">
+                    <div class="live-dot"></div>
+                    <span class="detail-topbar-label">Your active transactions</span>
+                    <span id="last-update" style="font-size:10px;color:var(--text-3);margin-left:6px">Last update: just now</span>
+                </div>
+                <div class="detail-inner">
+                    <div class="active-tx-header">
+                        <div class="active-icon" style="background:rgba(124,92,252,0.15)">🌐</div>
+                        <div>
+                            <div class="active-title" id="detail-title">Mesh Settlement</div>
+                            <div class="active-sub" id="detail-sub">No transactions yet — inject a payment to begin</div>
+                        </div>
+                        <div style="margin-left:auto;display:flex;gap:6px;align-items:center">
+                            <span id="detail-status-badge"></span>
+                        </div>
+                    </div>
+
+                    <div style="color:var(--text-3);font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em">
+                        Total Amount Settled
+                    </div>
+                    <div style="display:flex;align-items:flex-end;gap:14px;margin-top:4px;margin-bottom:14px">
+                        <div class="big-number" id="detail-amount">₹0.00</div>
+                        <button class="btn-action btn-a-purple" onclick="openModal()" style="margin-bottom:6px">📤 New Payment</button>
+                        <button class="btn-action btn-a-red" onclick="resetMesh()" style="margin-bottom:6px">🗑 Reset</button>
+                    </div>
+
+                    <!-- Metrics grid -->
+                    <div class="metrics-grid">
+                        <div class="metric-cell">
+                            <div>
+                                <div class="metric-cell-label">Packets</div>
+                                <div class="metric-cell-sub">In flight</div>
+                                <div class="metric-cell-val cyan" id="m-packets" style="color:var(--cyan)">0</div>
+                            </div>
+                            <span class="metric-cell-chevron">⌃</span>
+                        </div>
+                        <div class="metric-cell">
+                            <div>
+                                <div class="metric-cell-label">Settled</div>
+                                <div class="metric-cell-sub">Total count</div>
+                                <div class="metric-cell-val" id="m-settled" style="color:var(--emerald)">0</div>
+                            </div>
+                            <span class="metric-cell-chevron">⌃</span>
+                        </div>
+                        <div class="metric-cell">
+                            <div>
+                                <div class="metric-cell-label">Dupes</div>
+                                <div class="metric-cell-sub">Drop rate</div>
+                                <div class="metric-cell-val" id="m-dupe" style="color:var(--amber)">0%</div>
+                            </div>
+                            <span class="metric-cell-chevron">⌃</span>
+                        </div>
+                        <div class="metric-cell">
+                            <div>
+                                <div class="metric-cell-label">Avg Hops</div>
+                                <div class="metric-cell-sub">Per settlement</div>
+                                <div class="metric-cell-val" id="m-hops" style="color:var(--violet)">0</div>
+                            </div>
+                            <span class="metric-cell-chevron">⌃</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Mini chart row -->
+                <div class="minichart-row" id="minichart-row">
+                    <!-- populated by JS -->
+                </div>
+            </div>
+
+            <!-- Period / account chart card -->
+            <div class="period-card">
+                <div class="period-topbar">
+                    <div>
+                        <div class="period-title">Account Balances</div>
+                        <div class="period-sub">Contribution Period (Live)</div>
+                    </div>
+                    <div class="period-tabs">
+                        <div class="period-tab active">Live</div>
+                        <div class="period-tab">All</div>
+                    </div>
+                </div>
+                <div class="period-inner">
+                    <canvas id="period-canvas"></canvas>
+                </div>
+                <div class="tx-mini-list" id="tx-mini-list">
+                    <!-- recent transactions -->
+                </div>
+            </div>
+        </div>
+
+    </div><!-- /content -->
+</div><!-- /main -->
+
+<script>
+/* ══════════════════════ SPARKLINE DRAWING ══════════════════════ */
+const SPARKLINE_HISTORY = {};
+
+function drawSparkline(canvas, history, color, fill) {
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width  = canvas.offsetWidth  * dpr;
+    canvas.height = canvas.offsetHeight * dpr;
+    const ctx = canvas.getContext('2d');
+    ctx.scale(dpr, dpr);
+    const w = canvas.offsetWidth, h = canvas.offsetHeight;
+    if (!history || history.length < 2) return;
+    const min = Math.min(...history), max = Math.max(...history);
+    const range = max - min || 1;
+    const pts = history.map((v, i) => ({
+        x: (i / (history.length - 1)) * w,
+        y: h - ((v - min) / range) * h * 0.85 - h * 0.075
+    }));
+
+    if (fill) {
+        ctx.beginPath();
+        ctx.moveTo(pts[0].x, h);
+        pts.forEach(p => ctx.lineTo(p.x, p.y));
+        ctx.lineTo(pts[pts.length-1].x, h);
+        ctx.closePath();
+        const grad = ctx.createLinearGradient(0, 0, 0, h);
+        grad.addColorStop(0, color + '44');
+        grad.addColorStop(1, color + '00');
+        ctx.fillStyle = grad;
+        ctx.fill();
+    }
+
+    ctx.beginPath();
+    pts.forEach((p, i) => i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y));
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 1.8;
+    ctx.lineJoin = 'round';
+    ctx.stroke();
+}
+
+function pushHistory(id, value) {
+    if (!SPARKLINE_HISTORY[id]) SPARKLINE_HISTORY[id] = [];
+    const h = SPARKLINE_HISTORY[id];
+    h.push(value);
+    if (h.length > 20) h.shift();
+}
+
+/* ══════════════════════ BALANCE BAR CHART ══════════════════════ */
+let balanceHistory = {};
+
+function drawBalanceChart(accounts) {
+    const canvas = document.getElementById('period-canvas');
+    if (!canvas) return;
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width  = canvas.offsetWidth  * dpr;
+    canvas.height = canvas.offsetHeight * dpr;
+    const ctx = canvas.getContext('2d');
+    ctx.scale(dpr, dpr);
+    const w = canvas.offsetWidth, h = canvas.offsetHeight;
+
+    const COLORS = ['#7c5cfc','#22d3ee','#34d399','#fbbf24'];
+    const maxBal  = Math.max(...accounts.map(a => parseFloat(a.balance)), 1);
+    const barW    = (w - 48) / accounts.length - 12;
+
+    ctx.clearRect(0, 0, w, h);
+
+    accounts.forEach((a, i) => {
+        const pct = parseFloat(a.balance) / maxBal;
+        const bh  = pct * (h - 40);
+        const x   = 24 + i * (barW + 12);
+        const y   = h - 30 - bh;
+
+        // Bar background
+        ctx.fillStyle = 'rgba(255,255,255,0.04)';
+        ctx.beginPath();
+        ctx.roundRect(x, 10, barW, h - 40, 4);
+        ctx.fill();
+
+        // Bar fill
+        const grad = ctx.createLinearGradient(0, y, 0, h - 30);
+        grad.addColorStop(0, COLORS[i] + 'cc');
+        grad.addColorStop(1, COLORS[i] + '33');
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        ctx.roundRect(x, y, barW, bh, 4);
+        ctx.fill();
+
+        // Label
+        ctx.fillStyle = '#8b8fa8';
+        ctx.font = `500 10px Inter`;
+        ctx.textAlign = 'center';
+        const name = a.holderName.substring(0, 5);
+        ctx.fillText(name, x + barW/2, h - 12);
+
+        // Value
+        ctx.fillStyle = COLORS[i];
+        ctx.font = `700 10px JetBrains Mono`;
+        ctx.fillText('₹' + Math.round(parseFloat(a.balance)), x + barW/2, y - 5);
+    });
+}
+
+/* ══════════════════════ DEVICE CARD ICONS / COLORS ══════════════════════ */
+const CITY_META = {
+    'phone-mumbai':             { emoji:'🏙', color:'#7c5cfc', bg:'rgba(124,92,252,0.15)', city:'Mumbai' },
+    'phone-delhi':              { emoji:'🕌', color:'#22d3ee', bg:'rgba(34,211,238,0.15)', city:'Delhi' },
+    'phone-pune':               { emoji:'🏛', color:'#fbbf24', bg:'rgba(251,191,36,0.15)', city:'Pune' },
+    'phone-kolkata':            { emoji:'🌉', color:'#f472b6', bg:'rgba(244,114,182,0.15)', city:'Kolkata' },
+    'phone-bridge-hyderabad':   { emoji:'🌐', color:'#34d399', bg:'rgba(52,211,153,0.15)', city:'Hyderabad' },
+};
+function getMeta(id) {
+    return CITY_META[id] || { emoji:'📱', color:'#8b8fa8', bg:'rgba(139,143,168,0.1)', city: id };
+}
+
+const ACCOUNT_META = {
+    alice: { emoji:'👩', color:'#a78bfa' },
+    bob:   { emoji:'👨', color:'#22d3ee' },
+    carol: { emoji:'👩‍💼', color:'#34d399' },
+    dave:  { emoji:'👨‍💼', color:'#fbbf24' },
+};
+function getAccMeta(vpa) {
+    const k = Object.keys(ACCOUNT_META).find(k => vpa.startsWith(k)) || 'alice';
+    return ACCOUNT_META[k];
+}
+
+/* ══════════════════════ TOAST ══════════════════════ */
+function toast(type, title, msg) {
+    const icons = { settled:'✅', dupe:'♻️', invalid:'❌', info:'📡' };
+    const cls   = { settled:'t-settled', dupe:'t-dupe', invalid:'t-invalid', info:'t-info' };
+    const el = document.createElement('div');
+    el.className = `toast ${cls[type]||'t-info'}`;
+    el.innerHTML = `<span class="t-icon">${icons[type]||'💬'}</span>
+        <div><div class="t-title">${title}</div><div class="t-msg">${msg}</div></div>`;
+    document.getElementById('toast-container').appendChild(el);
+    setTimeout(() => el.remove(), 4300);
+}
+
+/* ══════════════════════ CLOCK ══════════════════════ */
+function updateClock() {
+    document.getElementById('topbar-clock').textContent = new Date().toLocaleTimeString();
+}
+setInterval(updateClock, 1000); updateClock();
+
+/* ══════════════════════ MODAL ══════════════════════ */
+function openModal()  { document.getElementById('modal-overlay').classList.add('open'); }
+function closeModal() { document.getElementById('modal-overlay').classList.remove('open'); }
+
+/* ══════════════════════ REFRESH ══════════════════════ */
+let lastTxIds = new Set();
+let allDevices = [];
+
+async function refresh() {
+    // Mesh state
+    const m = await fetch('/api/mesh/state').then(r => r.json()).catch(() => null);
+    if (!m) return;
+    allDevices = m.devices;
+
+    document.getElementById('tb-cache').textContent = m.idempotencyCacheSize;
+
+    // Sidebar packet count
+    const totalPackets = m.devices.reduce((s, d) => s + d.packetCount, 0);
+    document.getElementById('sb-packet-count').textContent = totalPackets;
+    document.getElementById('active-device-count').textContent = m.devices.length;
+
+    // Sidebar packet list (devices holding packets)
+    const sbList = document.getElementById('sb-packet-list');
+    const withPkts = m.devices.filter(d => d.packetCount > 0);
+    if (withPkts.length) {
+        sbList.innerHTML = withPkts.map(d => {
+            const meta = getMeta(d.deviceId);
+            return `<div class="packet-sub-item">
+                <div class="packet-sub-dot" style="background:${meta.bg};font-size:13px">${meta.emoji}</div>
+                <div class="packet-sub-info">
+                    <div class="packet-sub-name">${meta.city}</div>
+                    <div class="packet-sub-val">${d.packetCount} packet${d.packetCount>1?'s':''}</div>
+                </div>
+            </div>`;
+        }).join('');
+    } else {
+        sbList.innerHTML = '';
+    }
+
+    // Device cards
+    renderDeviceCards(m.devices);
+
+    // Accounts
+    const accs = await fetch('/api/accounts').then(r => r.json()).catch(() => []);
+    drawBalanceChart(accs);
+
+    // Stats
+    const st = await fetch('/api/stats').then(r => r.json()).catch(() => ({}));
+    document.getElementById('m-packets').textContent   = totalPackets;
+    document.getElementById('m-settled').textContent   = st.totalSettled || 0;
+    document.getElementById('m-dupe').textContent      = (st.duplicateDropRatePct || 0) + '%';
+    document.getElementById('m-hops').textContent      = st.avgHopsPerSettlement || 0;
+    document.getElementById('detail-amount').textContent = '₹' + parseFloat(st.totalAmountSettled||0).toFixed(2);
+
+    // Transactions
+    const txs = await fetch('/api/transactions').then(r => r.json()).catch(() => []);
+    const newIds = new Set(txs.map(t => t.id));
+    txs.forEach(t => {
+        if (!lastTxIds.has(t.id)) {
+            if (t.status === 'SETTLED') toast('settled', 'Payment Settled', `₹${parseFloat(t.amount).toFixed(2)} from ${t.senderVpa} → ${t.receiverVpa}`);
+            else if (t.status === 'DUPLICATE_DROPPED') toast('dupe', 'Duplicate Dropped', `Idempotency cache caught duplicate packet`);
+            else toast('invalid', 'Rejected', `${t.status}`);
+        }
+    });
+    lastTxIds = newIds;
+
+    renderTxMiniList(txs.slice(0, 4));
+    renderMiniCharts(m.devices, st);
+
+    // Update detail area
+    if (txs.length) {
+        const latest = txs[0];
+        document.getElementById('detail-title').textContent = `${latest.senderVpa} → ${latest.receiverVpa}`;
+        document.getElementById('detail-sub').textContent   = `via ${latest.bridgeNodeId} · ${latest.hopCount} hops · ${new Date(latest.settledAt).toLocaleString()}`;
+        const sclasses = { SETTLED:'ts-SETTLED', REJECTED:'ts-REJECTED', DUPLICATE_DROPPED:'ts-DUPLICATE_DROPPED', INVALID:'ts-INVALID' };
+        document.getElementById('detail-status-badge').innerHTML =
+            `<span class="tx-mini-status ${sclasses[latest.status]||''}">${latest.status.replace('_',' ')}</span>`;
+    }
+
+    document.getElementById('last-update').textContent = 'Last update: ' + new Date().toLocaleTimeString();
+}
+
+function renderDeviceCards(devices) {
+    const row = document.getElementById('device-cards-row');
+    const promo = document.getElementById('promo-card');
+
+    // Remove old device cards (keep promo)
+    [...row.children].forEach(c => { if (c !== promo) c.remove(); });
+
+    devices.forEach(d => {
+        const meta = getMeta(d.deviceId);
+        const hasPackets = d.packetCount > 0;
+        const isBridge   = d.hasInternet;
+
+        pushHistory('dev_' + d.deviceId, d.packetCount);
+
+        const card = document.createElement('div');
+        card.className = `device-card${isBridge ? ' bridge-card' : ''}`;
+        card.id = 'dc-' + d.deviceId;
+
+        const delta = hasPackets
+            ? `<span class="dc-delta up">▲ ${d.packetCount} pkt${d.packetCount>1?'s':''}</span>`
+            : `<span class="dc-delta neu">—</span>`;
+
+        card.innerHTML = `
+            <div class="dc-header">
+                <div class="dc-icon" style="background:${meta.bg}">${meta.emoji}</div>
+                <div>
+                    <div class="dc-type">${isBridge ? 'Bridge Node · 4G' : 'Offline · BT'}</div>
+                    <div class="dc-name">${meta.city}</div>
+                </div>
+                <div class="dc-ext-link" title="${d.deviceId}">🔗</div>
+            </div>
+            <div>
+                <div class="dc-metric-label">Packets Holding</div>
+                <div style="display:flex;align-items:center;gap:10px;margin-top:4px">
+                    <div class="dc-metric-value">${d.packetCount}</div>
+                    ${delta}
+                </div>
+            </div>
+            <canvas class="sparkline" id="sp-${d.deviceId}"></canvas>
+        `;
+
+        row.insertBefore(card, promo);
+
+        // Draw sparkline after render
+        requestAnimationFrame(() => {
+            const c = document.getElementById('sp-' + d.deviceId);
+            if (c) drawSparkline(c, SPARKLINE_HISTORY['dev_' + d.deviceId] || [0], meta.color, true);
+        });
+    });
+}
+
+function renderTxMiniList(txs) {
+    const STATUS_COLORS = { SETTLED:'#34d399', REJECTED:'#fb7185', DUPLICATE_DROPPED:'#fbbf24', INVALID:'#fb7185' };
+    const STATUS_CLS    = { SETTLED:'ts-SETTLED', REJECTED:'ts-REJECTED', DUPLICATE_DROPPED:'ts-DUPLICATE_DROPPED', INVALID:'ts-INVALID' };
+    document.getElementById('tx-mini-list').innerHTML = txs.length
+        ? txs.map(t => `
+            <div class="tx-mini-item">
+                <div class="tx-mini-dot" style="background:${STATUS_COLORS[t.status]||'#8b8fa8'}"></div>
+                <div class="tx-mini-label">${t.senderVpa} → ${t.receiverVpa}</div>
+                <div class="tx-mini-amt" style="color:${STATUS_COLORS[t.status]||'#8b8fa8'}">₹${parseFloat(t.amount).toFixed(0)}</div>
+                <div class="tx-mini-status ${STATUS_CLS[t.status]||''}">${t.status.split('_')[0]}</div>
+            </div>`).join('')
+        : `<div style="text-align:center;padding:16px;color:var(--text-3);font-size:12px">No transactions yet</div>`;
+}
+
+function renderMiniCharts(devices, st) {
+    const bridge = devices.find(d => d.hasInternet);
+    const offlineTotal = devices.filter(d => !d.hasInternet).reduce((s, d) => s + d.packetCount, 0);
+
+    const cells = [
+        { label:'Offline Packets', badge:'Live', value: offlineTotal, delta: offlineTotal > 0 ? `▲ ${offlineTotal}` : '—', color: offlineTotal > 0 ? 'var(--cyan)' : 'var(--text-2)', dc: 'dc-neu' },
+        { label:'Bridge Load',     badge:'Live', value: bridge ? bridge.packetCount : 0, delta: '—', color:'var(--emerald)', dc:'dc-neu' },
+        { label:'Total Settled',   badge:'All',  value: st.totalSettled || 0, delta: `+${st.totalSettled||0}`, color:'var(--violet)', dc:'dc-neu' },
+        { label:'Dupe Drop Rate',  badge:'Live', value: (st.duplicateDropRatePct||0) + '%', delta: '', color:'var(--amber)', dc:'dc-neu' },
+    ];
+
+    document.getElementById('minichart-row').innerHTML = cells.map(c => `
+        <div class="minichart-cell">
+            <div class="mc-label">${c.label} <span class="mc-badge">${c.badge}</span></div>
+            <div class="mc-value" style="color:${c.color}">${c.value}</div>
+            ${c.delta ? `<div class="mc-delta" style="color:${c.color};opacity:0.7">${c.delta}</div>` : ''}
+        </div>
+    `).join('');
+}
+
+/* ══════════════════════ ACTIONS ══════════════════════ */
+async function sendPacket() {
+    const btn = document.getElementById('btn-submit-send');
+    btn.disabled = true; btn.textContent = 'Encrypting…';
+    try {
+        const body = {
+            senderVpa:   document.getElementById('senderVpa').value,
+            receiverVpa: document.getElementById('receiverVpa').value,
+            amount:      parseFloat(document.getElementById('amount').value),
+            pin:         document.getElementById('pin').value,
+            ttl: 5,
+            startDevice: 'phone-mumbai'
+        };
+        const r = await fetch('/api/demo/send', {
+            method:'POST', headers:{'Content-Type':'application/json'},
+            body: JSON.stringify(body)
+        }).then(r => r.json());
+        toast('info', 'Packet Injected', `ID: ${r.packetId.substring(0,12)}… · TTL ${r.ttl}`);
+        closeModal();
+        await refresh();
+    } catch(e) {
+        toast('invalid', 'Error', e.message);
+    } finally {
+        btn.disabled = false; btn.textContent = '📤 Inject into Mesh';
+    }
+}
+
+async function gossip() {
+    const btn = document.getElementById('btn-gossip');
+    btn.disabled = true;
+    try {
+        const r = await fetch('/api/mesh/gossip', {method:'POST'}).then(r => r.json());
+        toast('info', 'Gossip Round Complete', `${r.transfers} packet transfer(s) across mesh`);
+        await refresh();
+    } finally { btn.disabled = false; }
+}
+
+async function flushBridges() {
+    const btn = document.getElementById('btn-flush');
+    btn.disabled = true;
+    try {
+        const r = await fetch('/api/mesh/flush', {method:'POST'}).then(r => r.json());
+        r.results.forEach(res => {
+            const t = res.outcome === 'SETTLED' ? 'settled' : res.outcome === 'DUPLICATE_DROPPED' ? 'dupe' : 'invalid';
+            toast(t, res.outcome.replace('_DROPPED','').replace('_',' '), `${res.bridgeNode} → pkt ${res.packetId}`);
+        });
+        await refresh();
+    } finally { btn.disabled = false; }
+}
+
+async function resetMesh() {
+    await fetch('/api/mesh/reset', {method:'POST'});
+    toast('info', 'Mesh Reset', 'All packets and cache cleared');
+    lastTxIds = new Set();
+    await refresh();
+}
+
+refresh();
+setInterval(refresh, 4000);
+</script>
+</body>
+</html>
